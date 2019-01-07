@@ -66,7 +66,8 @@ TRANSLATIONS = i18n/de_DE.ts \
     i18n/nb_NO.ts \
     i18n/fr_FR.ts \
     i18n/pl_PL.ts \
-    i18n/ru_RU.ts
+    i18n/ru_RU.ts \
+    i18n/nl_NL.ts
 
 lupdate_only{ # Workaround for lupdate to scan QML files
 SOURCES += QML/*.qml \
@@ -103,7 +104,7 @@ android {
 }
 
 # Include git hash into build
-unix:!macx { # macOS is not tested, exclude it
+unix: {
     GITHASHSTRING = $$system(git rev-parse --short HEAD)
 }
 

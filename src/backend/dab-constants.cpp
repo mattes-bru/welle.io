@@ -163,7 +163,7 @@ const char* DABConstants::getProgramTypeName(int type)
         case 26: typeName = "National Music"; break;
         case 27: typeName = "Oldies Music"; break;
         case 28: typeName = "Folk Music"; break;
-        case 29: typeName = "entry 29 not used"; break;
+        case 29: typeName = "Documentary"; break;
         case 30: typeName = "entry 30 not used"; break;
         case 31: typeName = "entry 31 not used"; break;
         default: typeName = "UNKNOWN";
@@ -292,11 +292,6 @@ const char* DABConstants::getLanguageName(int language)
     return languageName;
 }
 
-
-DABParams::DABParams()
-{
-    setMode(1);
-}
 
 DABParams::DABParams(int mode)
 {
