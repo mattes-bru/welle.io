@@ -1,5 +1,6 @@
 include(../backend.pri)
 
+
 TEMPLATE = app
 TARGET = welle-cli
 CONFIG += console
@@ -32,3 +33,14 @@ win32 {
 else {
     warning("Can't get git hash.")
 }
+
+# Deployment
+include(../deployment.pri)
+
+static_webcontent.files = \
+    index.html \
+    index.js
+static_webcontent.path =/opt/welle-io/
+
+INSTALLS += static_webcontent
+

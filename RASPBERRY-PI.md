@@ -4,6 +4,18 @@ This guide borrows parts from [Qt wiki](https://wiki.qt.io/RaspberryPi2EGLFS).
 This guide is a work in progress.  
 If you have issues or something is completely wrong, please let us know at the [forums.](https://forum.welle.io/)  
 ---------------------------------------------------------------------------------
+
+
+# TODO in this document
+[ ] Additional libraries
+[ ] script to update sysroot
+[ ] Qt 5.12.0 checkout
+[ ] configure
+[ ] Qt Creator setup
+[ ] disable ui
+[ ] systemd
+
+
 Table of contents  
 =================
 
@@ -379,3 +391,7 @@ Known issues
 This means that you can accidentally click on icons on the desktop itself, behind the user interface of the program, while operating the program as normal.  
 It is not known if this is a Qt issue, welle.io issue or a Raspbian driver issue.  
 For now, take care when operating the user interface with a touch screen.
+
+
+
+

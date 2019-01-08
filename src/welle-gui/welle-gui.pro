@@ -1,4 +1,5 @@
 include(../backend.pri)
+include(../deployment.pri)
 
 TEMPLATE = app
 TARGET = welle-io

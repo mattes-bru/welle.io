@@ -7,7 +7,9 @@ SUBDIRS += \
     src/tests
 }
 
-DISTFILES += $$PWD/README.md
+DISTFILES += \
+    $$PWD/README.md \
+    $$PWD/RASPBERRY-PI.md\
 
 macx {
     QMAKE_INFO_PLIST = $$(PWD)/welle-io.plist
