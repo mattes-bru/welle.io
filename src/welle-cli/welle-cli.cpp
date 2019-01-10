@@ -72,18 +72,17 @@ using namespace nlohmann;
 class AlsaProgrammeHandler: public ProgrammeHandlerInterface {
     public:
         virtual void onFrameErrors(int frameErrors) override { (void)frameErrors; }
-        virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, bool isStereo, const std::string& mode) override
+        virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const std::string& mode) override
         {
             (void)mode;
             lock_guard<mutex> lock(aomutex);
 
-            bool reset_ao = (sampleRate != (int)rate) or (isStereo != stereo);
+            bool reset_ao = sampleRate != (int)rate;
             rate = sampleRate;
-            stereo = isStereo;
 
             if (!ao or reset_ao) {
-                cerr << "Create audio output with stereo " << stereo << " and rate " << rate << endl;
-                ao = make_unique<AlsaOutput>(stereo ? 2 : 1, rate);
+                cerr << "Create audio output rate " << rate << endl;
+                ao = make_unique<AlsaOutput>(2, rate);
             }
 
             ao->playPCM(move(audioData));
@@ -127,24 +126,23 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
         WavProgrammeHandler& operator=(WavProgrammeHandler&& other) = default;
 
         virtual void onFrameErrors(int frameErrors) override { (void)frameErrors; }
-        virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, bool isStereo, const string& mode) override
+        virtual void onNewAudio(std::vector<int16_t>&& audioData, int sampleRate, const string& mode) override
         {
-            if (rate != sampleRate or stereo != isStereo) {
+            if (rate != sampleRate ) {
                 cout << "[0x" << std::hex << SId << std::dec << "] " <<
-                    "rate " << sampleRate << " stereo " << isStereo << " mode " << mode << endl;
+                    "rate " << sampleRate <<  " mode " << mode << endl;
 
                 string filename = filePrefix + ".wav";
                 if (fd) {
                     wavfile_close(fd);
                 }
-                fd = wavfile_open(filename.c_str(), sampleRate, isStereo ? 2 : 1);
+                fd = wavfile_open(filename.c_str(), sampleRate, 2);
 
                 if (not fd) {
                     cerr << "Could not open wav file " << filename << endl;
                 }
             }
             rate = sampleRate;
-            stereo = isStereo;
 
             if (fd) {
                 wavfile_write(fd, audioData.data(), audioData.size());
@@ -170,7 +168,6 @@ class WavProgrammeHandler: public ProgrammeHandlerInterface {
         uint32_t SId;
         string filePrefix;
         FILE* fd = nullptr;
-        bool stereo = true;
         int rate = 0;
 };
 
