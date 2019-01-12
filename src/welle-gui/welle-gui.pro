@@ -57,7 +57,8 @@ DISTFILES +=    \
     QML/components/WPopup.qml \
     QML/components/WSwitch.qml \
     QML/components/WTumbler.qml \
-    QML/expertviews/ServiceDetails.qml
+    QML/expertviews/ServiceDetails.qml \
+    raspi/welle-io
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
@@ -122,3 +123,10 @@ win32 {
 else {
     warning("Can't get git hash.")
 }
+
+
+systemd_files.files = \
+    ./raspi/welle-io.service
+
+systemd_files.path =/etc/systemd/system
+INSTALLS += systemd_files

@@ -1,0 +1,10 @@
+[Unit]
+Description=welle-io DAB+ receiver
+After=network.target
+
+[Service]
+ExecStart=/opt/welle-io/welle-io
+
+
+[Install]
+WantedBy=multi-user.target
