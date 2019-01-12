@@ -1,48 +1,44 @@
 welle.io on Raspberry Pi 2/3  
 ============================
+
 This guide borrows parts from [Qt wiki](https://wiki.qt.io/RaspberryPi2EGLFS).  
 This guide is a work in progress.  
 If you have issues or something is completely wrong, please let us know at the [forums.](https://forum.welle.io/)  
 ---------------------------------------------------------------------------------
 
 
-# TODO in this document
-[ ] Additional libraries
-[ ] script to update sysroot
-[ ] Qt 5.12.0 checkout
-[ ] configure
-[ ] Qt Creator setup
-[ ] disable ui
-[ ] systemd
-
-
 Table of contents  
-=================
+-----------------
 
-  * [Description](#description)
-  * [Hardware requirements](#hardware-requirements)
-  * [Setup](#setup)
-  * [Building](#building)
-  * [Power supply](#power-supply)
-  * [Troubleshooting](#troubleshooting)
-  * [Known issues](#known-issues)
+* [Description](#description)
+* [Hardware requirements](#hardware-requirements)
+* [Setup](#setup)
+* [Building](#building)
+* [Power supply](#power-supply)
+* [Troubleshooting](#troubleshooting)
+* [Known issues](#known-issues)
 
 Description
-===========
+-----------
+
 This guide will help you compile and run welle.io on your Raspberry Pi 2/3 using the [Qt environment](https://www.qt.io) with Qt Creator.  
 Qt will be set up for cross compiling from a desktop Linux computer since Qt most likely will not be able to be natively compiled on a Raspberry Pi due to memory constraints.  
 
 Tested configurations are:
+
 * Raspberry Pi 3 Model B
 * Qt 5.9.3
 * Qt 5.10.0
+* Qt 5.12.0
 * Ubuntu 17.10 x64
+* Ubuntu 18.10 x64
 * Raspbian Stretch
 
 Hardware requirements
 ---------------------
 
 **Raspberry Pi:**
+
 * Raspberry Pi 2 or 3. The original Pi may, or may not work
 * [Adequate power supply](#power-supply)
 * 4GB or larger MicroSD card
@@ -51,16 +47,16 @@ Hardware requirements
 (For details please see [here](https://github.com/airspy/host/#how-to-build-the-host-software-on-linux))  
   
 **Host computer:**
+
 * Desktop/laptop computer running Ubuntu or an equivalent Debian Linux system  
 (Other distributions will work, but is not tested)  
 * A way to read/write MicroSD cards on a computer
 * Wireless or wired connection between desktop computer and Raspberry Pi
 
-
 Setup
 -----
 
-First we need to get Raspbian up and running on the Raspberry Pi.  
+First we need to get Raspbian up and running on the Raspberry Pi. You can either use the cli or desktop version (both will run welle-gui in the end)
 Only [Raspbian Stretch](https://www.raspberrypi.org/downloads/raspbian/) or newer will work, since Raspbian Jessie or older have a too old GCC/GLIBC version.  
 The easiest way is to download [NOOBS.](https://www.raspberrypi.org/downloads/noobs/)  
 
@@ -73,25 +69,33 @@ The easiest way is to download [NOOBS.](https://www.raspberrypi.org/downloads/no
 **ON RASPBERRY PI:**
 
 3. Update Raspbian and update to the latest packages.  
-   ```
+
+   ```bash
    sudo rpi-update
    sudo apt update
    sudo apt dist-upgrade
    ```
+
    Reboot your Pi
-   ```
+
+   ```bash
    sudo reboot
    ```
+
    (Optional but highly recommended: Use raspi-config and set up SSH to your Pi so you can remote control it from another computer)  
    (Optional: Use raspi-config and set GPU memory to 256)  
    (More info about raspi-config [here](https://www.raspberrypi.org/documentation/configuration/raspi-config.md))  
-   ```
+
+   ```bash
    sudo raspi-config
    ```
+
 4. Install the required packages for welle.io and RTL-SDR.  
+
+   ```bash
+   sudo apt install libfaad-dev libfftw3-dev librtlsdr-dev libusb-1.0-0-dev mesa-common-dev libglu1-mesa-dev libpulse-dev libmpg123-dev libmp3lame-dev libsoapysdr-dev libairspy-dev rtl-sdr
    ```
-   sudo apt install libfaad-dev libfftw3-dev librtlsdr-dev libusb-1.0-0-dev mesa-common-dev libglu1-mesa-dev libpulse-dev rtl-sdr
-   ```   
+
 5. Install a bunch of development files.  
    (For simplicity we use build-dep, not everything is really needed, but it is easier this way.)  
    Edit sources list in /etc/apt/sources.list and uncomment (remove #) the **deb-src** line:  
@@ -110,22 +114,30 @@ The easiest way is to download [NOOBS.](https://www.raspberrypi.org/downloads/no
    ```
    sudo apt install libudev-dev libinput-dev libts-dev libxcb-xinerama0-dev libxcb-xinerama0
    ```
-6. Prepare our target directory  
+6. Install gdbserver
+   ```
+   sudo apt-get install gdbserver
+   ```
+7. Prepare our target directory  
    ```
    sudo mkdir /usr/local/qt5pi
-   sudo chown pi:pi /usr/local/qt5pi
    ```
+8. Set root password (we need to deploy files as root)
+    ```
+    sudo passwd
+    echo "PermitRootLogin yes" | sudo tee -a /etc/ssh/sshd_config
+    ```
 
 Now we need to set up the toolchain, environments and directories on our host computer.  
 
 **ON HOST COMPUTER:**
 
-7. Make a raspi folder.  
+9. Make a raspi folder.  
    ```
    mkdir ~/raspi
    cd ~/raspi
    ```
-8. Create a sysroot.  
+10. Create a sysroot.  
    Using rsync we can properly keep things synchronized in the future as well.  
    Replace "raspberrypi.local" with the address of the Pi.  
    Depending on your connection speed, this might take a while, since you are basically copying the entire contents of your Pi, to your host PC.  
@@ -133,18 +145,18 @@ Now we need to set up the toolchain, environments and directories on our host co
    because the cross compiling environment will use this sysroot folder as its source instead of the packages you might have installed on your host PC.  
    ```
    mkdir sysroot sysroot/usr sysroot/opt
-   rsync -avz pi@raspberrypi.local:/lib sysroot
-   rsync -avz pi@raspberrypi.local:/usr/include sysroot/usr
-   rsync -avz pi@raspberrypi.local:/usr/lib sysroot/usr
-   rsync -avz pi@raspberrypi.local:/opt/vc sysroot/opt
+   rsync -avz root@raspberrypi.local:/lib sysroot
+   rsync -avz root@raspberrypi.local:/usr/include sysroot/usr
+   rsync -avz root@raspberrypi.local:/usr/lib sysroot/usr
+   rsync -avz root@raspberrypi.local:/opt/vc sysroot/opt
    ```
-9. Adjust symlinks to be relative. Use provided script.  
+11. Adjust symlinks to be relative. Use provided script.  
    ```
    wget https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py
    chmod +x sysroot-relativelinks.py
    ./sysroot-relativelinks.py sysroot
    ```
-10. Get a GCC toolchain for ARM systems.  
+12. Get a GCC toolchain for ARM systems.  
    ```
    wget https://releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
    tar -xvf gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
@@ -155,7 +167,7 @@ Now we need to set up the toolchain, environments and directories on our host co
 Building
 --------
 
-11. Get Qt source.  
+13. Get Qt source.  
     We will use the entire Qt system instead of only qtbase, which is probably overkill, but makes it way easier to manage.  
 	(Additional information about building Qt from source [here.](https://wiki.qt.io/Building_Qt_5_from_Git))  
     The target directory is /usr/local/qt5pi on the Pi, the host tools like qmake will go to ~/raspi/qt5, while make install will target ~/raspi/qt5pi (this is what we will sync to the device).
@@ -163,18 +175,21 @@ Building
 	```
 	git clone git://code.qt.io/qt/qt5.git
 	cd qt5
-	git checkout 5.10
+	git checkout v5.12.0
 	```
-	Currently, Qt version 5.10 is working.  
-	If the branch version does not exist, try another/newer branch number.  
-	Branch information for Qt is located [here.](http://code.qt.io/cgit/qt/qt5.git/)  
+	Currently, Qt version 5.12.0 is working.  
 	Now we need to initialize the repository, which will download all the submodules we need for Qt.  
-	We will not download qtwebkit or qtwebengine since these modules tend to create problems later, and are not needed for welle.io anyway.  
 	```
-	./init-repository --module-subset=default,-qtwebkit,-qtwebkit-examples,-qtwebengine
+	./init-repository
 	```
 	If the init failed due to network errors or similar, run the command again, but append **-f** at the end.  
-12. Configure Qt.  
+14. Configure Qt.  
+    We are going to build Qt in a shadow build outside the source, so let's create a build directory first:
+    ```
+    cd ~/raspi
+    mkdir qt5-build
+    cd qt5-build
+    ```
 	You need to change **rpi-version** with a proper Raspberry Pi version.  
 	Use: **linux-rasp-pi-g++** for RPi, **linux-rasp-pi2-g++** for RPi2 and **linux-rasp-pi3-g++** for RPi3.  
 	If your system is 32-bit you may also edit device option to:  
@@ -184,24 +199,20 @@ Building
 	Now it's time to set up and configure Qt for cross compiling to the ARM platform.  
 	Don't forget to change **rpi-version**.  
 	```
-    ./configure -release -opengl es2 -device <rpi-version> -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- -sysroot ~/raspi/sysroot -opensource -confirm-license -no-use-gold-linker -make libs -prefix /usr/local/qt5pi -extprefix ~/raspi/qt5pi -hostprefix ~/raspi/qt5 -v
+    ../qt5/configure -release -opengl es2 -device <rpi-version> -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- -sysroot ~/raspi/sysroot -opensource -confirm-license -optimized-qmake -reduce-exports  -make libs -prefix /usr/local/qt5pi -extprefix ~/raspi/qt5pi -hostprefix ~/raspi/qt5 -v
 	```
-13. Compile Qt.  
+15. Compile Qt.  
     (Optional: use switch **-j** to tell make how many cores your cpu has.)  
 	(Example, ***make -j4*** tells make to use four cpu cores, which greatly speeds up compile time.)  
     ```
 	make
 	make install
 	```
-	If anything failed, you can clean everything with:  
-	```
-	git clean -dfx
-	```
-14. Deploy Qt to the device.  
+16. Deploy Qt to the device.  
     We simply rsync everything from ~/raspi/qt5pi to the prefix we configured above.  
     ```
 	cd ..
-    rsync -avz qt5pi pi@raspberrypi.local:/usr/local
+    rsync -avz qt5pi root@raspberrypi.local:/usr/local
 	```
 	Now we will build an example to test if everything went well.  
 	After the building is complete, we will copy the executable example to the device.  
@@ -216,13 +227,13 @@ Now we need to fix various links and issues on the Raspberry Pi.
 
 **ON RASPBERRY PI:**
 
-15. Update the device to let the linker find the Qt libs:  
+17. Update the device to let the linker find the Qt libs:  
 	```
     echo /usr/local/qt5pi/lib | sudo tee /etc/ld.so.conf.d/qt5pi.conf
     sudo ldconfig
 	```
     If you're facing issues with running the example, try to use 00-qt5pi.conf instead of qt5pi.conf, to introduce proper order.  
-16. Fix the EGL/GLES libraries.  
+18. Fix the EGL/GLES libraries.  
 	The device may have the Mesa version of libEGL and libGLESv2 in /usr/lib/arm-linux-gnueabihf, resulting Qt apps picking these instead of the real thing from /opt/vc/lib.  
 	This may be fine for X11 desktop apps not caring about OpenGL performance but is totally useless for windowing system-less, fullscreen embedded apps.  
 	You may want to save the originals somewhere, just in case.  
@@ -237,7 +248,7 @@ Now we need to fix various links and issues on the Raspberry Pi.
 	sudo ln -s /opt/vc/lib/libEGL.so /opt/vc/lib/libEGL.so.1
     sudo ln -s /opt/vc/lib/libGLESv2.so /opt/vc/lib/libGLESv2.so.2
 	```
-17. Run qopenglwidget example, that we've built before.  
+19. Run qopenglwidget example, that we've built before.  
     At this point it should just work at fullscreen with 60 FPS and mouse, keyboard, and possibly touch support.  
     ```
 	sudo chmod +x /home/pi/qopenglwidget
@@ -249,7 +260,12 @@ This is only half the battle though. Now we continue on to set up our host compu
 
 **ON HOST COMPUTER:**
 
-18. We now need the Qt environment for our host computer, including Qt Creator.  
+20. Install dependencies
+    ```
+    sudo apt install build-essentials gdb-multiarch
+    ```
+
+21. We now need the Qt environment for our host computer, including Qt Creator.  
 	The easiest way to obtain this, is to download a precompiled Qt binary for our operating system. In this case, Ubuntu.  
 	Go to [Qt website](https://www1.qt.io/download-open-source/#section-2) and download the appropriate package for your system.  
 	For Ubuntu, Use [Online Installer Linux 64-bit.](http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run)  
@@ -261,17 +277,22 @@ This is only half the battle though. Now we continue on to set up our host compu
 	./qt-unified-linux-x64-online.run
 	```
 	Follow the instructions and install Qt, including submodules and Qt Creator.  
-	Select version 5.9.3 or higher, and a QT Creator version.  
-19. Clone welle.io.  
+	Select version 5.12.0 or higher, and a QT Creator version.  
+22. Clone welle.io.  
     ```
 	git clone https://github.com/AlbrechtL/welle.io.git
 	```
-20. Start Qt Creator.  
-21. Open project and select the welle.io folder that you just cloned and click on welle.io.pro.  
-22. When the **configure project** screen comes up, click on **manage kits**  
-    Then go to the **Qt Versions** tab and click **Add...**  
+23. Start Qt Creator.  
+24. Open project and select the welle.io folder that you just cloned and click on welle.io.pro.  
+25. When the **configure project** screen comes up, click on **manage kits** 
+   
+    In order to deploy directly to the raspberry pi you'll have to set it up first. Switch to the **Devices** options and select the **devices** tap. Click the **add** button an follow the wizard to configure the pi as target device. Use root as user for the deployment. 
+
+    With this done, go back to the Kits options and configure the Kit.
+
+    Go to the **Qt Versions** tab and click **Add...**  
 	Move to the **~/raspi/qt5/bin/qmake** folder and select the qmake there.  
-	**Details** on the bottom should say something along the lines of "Qt version 5.9.3 for Embedded linux"  
+	**Details** on the bottom should say something along the lines of "Qt version 5.12.0 for Embedded linux"  
 	
 	Now, go over to the **Compilers** tab and add **GCC C**  
 	Name it "GCC ARM" or similar so we can easily identify it later.  
@@ -281,52 +302,38 @@ This is only half the battle though. Now we continue on to set up our host compu
 	Once again, click on **Add** and add a **GCC C++** compiler.  
 	Name it "G++ ARM" or similar.  
 	Compiler path should be the same as the previous one, but select **arm-linux-gnueabihf-g++** instead of "arm-linux-gnueabihf-gcc"  
-	ABI should read "arm-linux-generic-elf-32bit", same as the previous one.  
+    ABI should read "arm-linux-generic-elf-32bit", same as the previous one.  
 	
 	The last thing we could set up is in the **Debuggers** tab. This one isn't really needed, but lets do it anyway.  
-	Press **Add** and name it "ARM GDB" or similar and the path should be the same as previous, but select **arm-linux-gnueabihf-gdb**.  
+	Press **Add** and name it "ARM GDB" or similar and select the previously installed gdb-mulitarch (`/usr/bin/gdb-multiarch`)
 	With all this done, we can make a new kit.  
 	
 	Click on the **Kits** tab and **add**.  
-	Name it "Raspberry Pi" or similar.  
-	Device type: **Generic Linux Device**  
-	Sysroot: **~/raspi/sysroot**  
-	Compiler: C: **GCC ARM** (Or what you named your GCC compiler.)  
-	Compiler: C++: **G++ ARM** (Or what you named your G++ compiler.)  
-	Debugger: **ARM GDB** (Or what you named your GDB debugger.)  
-	Qt version: **Qt 5.9.3 (qt5)** (The one you made, not the default one which most likely already was present in the "Qt Versions" tab.)  
+	* Name it "Raspberry Pi" or similar.  
+	* Device type: **Generic Linux Device**  
+	* Sysroot: **~/raspi/sysroot**  
+    * Device: **The device configured in the first step**
+	* Compiler: C: **GCC ARM** (Or what you named your GCC compiler.)  
+	* Compiler: C++: **G++ ARM** (Or what you named your G++ compiler.)  
+	* Debugger: **ARM GDB** (Or what you named your GDB debugger.)  
+	* Qt version: **Qt 5.12.0 (qt5)** (The one you made, not the default one which most likely already was present in the "Qt Versions" tab.)  
 
     With all this done, click apply and ok.  
 	Now your newly created "Raspberry Pi" kit should appear in the **Configure project** section. Select it and press **configure project.**  
 	Stuff should happen and you should be greeted with a projects tree view and some other stuff, probably a Project "MESSAGE" message of some sort too.  
-23. In order to compile welle.io for Raspberry Pi successfully, we need to do one adjustment to the source code.  
-    Double click on **welle.io.pro** in the tree view,  
-	scroll down to where it says **unix:!macx:!android:** find the line which says **CONFIG += airspy**  
-	and comment it out by putting a **#** in front of it.  
-	(Unless you need Airspy support.)  
-	```
-	#CONFIG += airspy
-	```
-	Save file (ctrl+s)  
-24.	Now click on the monitor icon at the left hand side, most likely saying "welle.io debug" or similar, change the build to **release**.  
+
+26.	Now click on the monitor icon at the left hand side, most likely saying "welle.io debug" or similar, change the build to **release**.  
 	Wait a couple of seconds until the green arrows lights up again.  
-25. Click on the hammer icon, which means **build project**.  
-    Qt Creator will build welle.io and output the finished program into a "release" folder most likely named "build-welle-io-Raspberry_Pi-Release".  
-26. Open a new terminal and navigate to the release folder.  
-    Transfer the program over to the Raspberry Pi.
-    ```
-	cd ~/build-welle-io-Raspberry_Pi-Release
-	scp welle-io pi@raspberrypi.local:/home/pi
-	```
+25. Click on the Play icon, which means **run project**.  
+    Qt Creator will build welle.io, upload it to the pi and start it.
 	
 **ON RASPBERRY PI:**
 
-27. Find the file **welle-io** and run it to enjoy welle.io on your Raspberry Pi.  
-    Open a new terminal and type:  
-    ```
-	./welle-io --disable-splash
-	```
-    The **--disable-splash** argument is used because otherwise welle.io will crash on Raspberry Pi.  
+27. 
+    welle.io is deployed to `/opt/welle-io/` can be started without an X-Server (GUI) running. If you are using the raspberry pi with the graphical user interface start the welle-gui with the `-platform xcb` options so that welle-io will run inside the gui rather than above.
+
+    **TODO** systemd
+
     See the troubleshooting section at the bottom for details.  
     	
 Power supply
@@ -380,18 +387,23 @@ To work around this issue, start welle.io with the argument **--disable-splash**
 OpenGLES will not output any Qt windows to the remote desktop,  
 only a fullscreen window on an attached screen, such as HDMI or DSI port.  
 To work around this issue, use argument **-platform xcb** when starting welle.io.  
-You might have to install the proper xcb libraries if these are not present on your Raspberry Pi.
+You might have to install the proper xcb libraries if these are not present on your Raspberry Pi. 
+
+    You can also try the `vnc` or `webgl` platform to operate welle-io remotely.
+
 ```
 ./welle-io -platform xcb
 ```
+
+    
 
 Known issues
 -----------
 * When using a touch screen, the user interface will be "transparent" to your screen touches.  
 This means that you can accidentally click on icons on the desktop itself, behind the user interface of the program, while operating the program as normal.  
-It is not known if this is a Qt issue, welle.io issue or a Raspbian driver issue.  
-For now, take care when operating the user interface with a touch screen.
+This is because of the fact that the raspi deskop and the welle-io EGLFS application do not know about each other but the both know about the touchscreen. In order to prevent this, disable the GUI with `raspi-config` when you start welle-io with the default `eglfs` platform or change the platform to `xcb`
 
+* The debug version of welle-io does not find any radio stations. 
 
 
 
