@@ -1,0 +1,9 @@
+# Commandline arguments to append to the welle-io autostart
+WELLE_ARGS=""
+
+# change the Qt platform
+# webgl: a web based ui (see: TODO add link)
+# vnc
+# eglfs <- default
+# QT_QPA_PLATFORM="webgl"
+

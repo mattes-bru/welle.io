@@ -127,6 +127,11 @@ else {
 
 systemd_files.files = \
     ./raspi/welle-io.service
-
 systemd_files.path =/etc/systemd/system
+
+service_conf.files = \
+    ./raspi/welle-io
+service_conf.path =/etc/default
+
 INSTALLS += systemd_files
+INSTALLS += service_conf

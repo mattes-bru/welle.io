@@ -3,8 +3,8 @@ Description=welle-io DAB+ receiver
 After=network.target
 
 [Service]
-ExecStart=/opt/welle-io/welle-io
-
+EnvironmentFile=/etc/default/welle-io
+ExecStart=/opt/welle-io/welle-io $WELLE_ARGS
 
 [Install]
 WantedBy=multi-user.target
