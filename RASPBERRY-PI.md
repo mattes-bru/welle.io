@@ -93,7 +93,10 @@ The easiest way is to download [NOOBS.](https://www.raspberrypi.org/downloads/no
 4. Install the required packages for welle.io and RTL-SDR.  
 
    ```bash
-   sudo apt install libfaad-dev libfftw3-dev librtlsdr-dev libusb-1.0-0-dev mesa-common-dev libglu1-mesa-dev libpulse-dev libmpg123-dev libmp3lame-dev libsoapysdr-dev libairspy-dev rtl-sdr
+   sudo apt install libfaad-dev libfftw3-dev librtlsdr-dev libusb-1.0-0-dev \
+   mesa-common-dev libglu1-mesa-dev libpulse-dev libmpg123-dev libmp3lame-dev \
+   libsoapysdr-dev libairspy-dev rtl-sdr libudev-dev libinput-dev libts-dev \
+   libxcb-xinerama0-dev libxcb-xinerama0
    ```
 
 5. Install a bunch of development files.  
@@ -107,23 +110,26 @@ The easiest way is to download [NOOBS.](https://www.raspberrypi.org/downloads/no
    sudo apt update
    ```
    Install required libraries:
+   
    ```
    sudo apt-get build-dep qt4-x11
    sudo apt-get build-dep qtbase-opensource-src
    ```
-   ```
-   sudo apt install libudev-dev libinput-dev libts-dev libxcb-xinerama0-dev libxcb-xinerama0
-   ```
-6. Install gdbserver
+
+6. Install gdbserver (for remote debugging)
+
    ```
    sudo apt-get install gdbserver
    ```
+
 7. Prepare our target directory  
    ```
    sudo mkdir /usr/local/qt5pi
    ```
+
 8. Set root password (we need to deploy files as root)
-    ```
+
+    ``` bash
     sudo passwd
     echo "PermitRootLogin yes" | sudo tee -a /etc/ssh/sshd_config
     ```
@@ -132,75 +138,111 @@ Now we need to set up the toolchain, environments and directories on our host co
 
 **ON HOST COMPUTER:**
 
-9. Make a raspi folder.  
-   ```
+9. Make a raspi folder.
+
+   ``` bash
    mkdir ~/raspi
    cd ~/raspi
    ```
+
 10. Create a sysroot.  
-   Using rsync we can properly keep things synchronized in the future as well.  
-   Replace "raspberrypi.local" with the address of the Pi.  
-   Depending on your connection speed, this might take a while, since you are basically copying the entire contents of your Pi, to your host PC.  
-   It is important that you have already downloaded the required packages for welle.io on your Pi before you start rsync,
-   because the cross compiling environment will use this sysroot folder as its source instead of the packages you might have installed on your host PC.  
-   ```
+
+    Using rsync we can properly keep things synchronized in the future as well. 
+
+    Replace "raspberrypi.local" with the address of the Pi.  
+    Depending on your connection speed, this might take a while, since you are basically copying the entire contents of your Pi, to your host PC.
+
+    It is important that you have already downloaded the required packages for welle.io on your Pi before you start rsync because the cross compiling environment will use this sysroot folder as its source instead of the packages you might have installed on your host PC.  
+
+   ``` bash
    mkdir sysroot sysroot/usr sysroot/opt
    rsync -avz root@raspberrypi.local:/lib sysroot
    rsync -avz root@raspberrypi.local:/usr/include sysroot/usr
    rsync -avz root@raspberrypi.local:/usr/lib sysroot/usr
    rsync -avz root@raspberrypi.local:/opt/vc sysroot/opt
    ```
+
 11. Adjust symlinks to be relative. Use provided script.  
-   ```
-   wget https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py
-   chmod +x sysroot-relativelinks.py
-   ./sysroot-relativelinks.py sysroot
-   ```
+
+    ```bash
+    wget https://raw.githubusercontent.com/riscv/riscv-poky/master/scripts/sysroot-relativelinks.py
+    chmod +x sysroot-relativelinks.py
+    ./sysroot-relativelinks.py sysroot
+    ```
+
 12. Get a GCC toolchain for ARM systems.  
-   ```
-   wget https://releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
-   tar -xvf gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
-   ```
+
+    ``` bash
+    wget https://releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
+    tar -xvf gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf.tar.xz
+    ```
+
    Or check the [website](https://releases.linaro.org/components/toolchain/binaries/latest-5/arm-linux-gnueabihf/) for the latest toolchain.  
    If you are using a 32-bit system, download the 32-bit version. (i686)  
- 
+
 Building
 --------
 
 13. Get Qt source.  
     We will use the entire Qt system instead of only qtbase, which is probably overkill, but makes it way easier to manage.  
-	(Additional information about building Qt from source [here.](https://wiki.qt.io/Building_Qt_5_from_Git))  
-    The target directory is /usr/local/qt5pi on the Pi, the host tools like qmake will go to ~/raspi/qt5, while make install will target ~/raspi/qt5pi (this is what we will sync to the device).
-	Don't forget to adjust paths if you changed that. For some reason the ~/ in the paths may not work, if this the case just use full paths.
-	```
-	git clone git://code.qt.io/qt/qt5.git
-	cd qt5
-	git checkout v5.12.0
-	```
-	Currently, Qt version 5.12.0 is working.  
-	Now we need to initialize the repository, which will download all the submodules we need for Qt.  
-	```
-	./init-repository
-	```
-	If the init failed due to network errors or similar, run the command again, but append **-f** at the end.  
+    (Additional information about building Qt from source [here.](https://wiki.qt.io/Building_Qt_5_from_Git))  
+
+    The target directory is /usr/local/qt5pi on the Pi, the host tools like qmake will go to ~/raspi/qt5, while make install will target ~/raspi/qt5pi (this is what we will sync to the device). Don't forget to adjust paths if you changed that. For some reason the ~/ in the paths may not work, if this the case just use full paths.
+
+    ```bash
+    git clone git://code.qt.io/qt/qt5.git
+    cd qt5
+    ```
+
+    Now checkout the latest relase of the Qt sources (currently 5.12.3).
+
+    ```bash
+    git checkout v5.12.3
+    ```
+
+    Now we need to initialize the repository, which will download all the submodules we need for Qt.
+
+    ``` bash
+    ./init-repository
+    ```
+
+    If the init failed due to network errors or similar, run the command again, but append **-f** at the end.
+
 14. Configure Qt.  
     We are going to build Qt in a shadow build outside the source, so let's create a build directory first:
-    ```
+
+    ``` bash
     cd ~/raspi
     mkdir qt5-build
     cd qt5-build
     ```
-	You need to change **rpi-version** with a proper Raspberry Pi version.  
-	Use: **linux-rasp-pi-g++** for RPi, **linux-rasp-pi2-g++** for RPi2 and **linux-rasp-pi3-g++** for RPi3.  
-	If your system is 32-bit you may also edit device option to:  
-	```
-	-device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-i686_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
-	```
-	Now it's time to set up and configure Qt for cross compiling to the ARM platform.  
-	Don't forget to change **rpi-version**.  
-	```
-    ../qt5/configure -release -opengl es2 -device <rpi-version> -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- -sysroot ~/raspi/sysroot -opensource -confirm-license -optimized-qmake -reduce-exports  -make libs -prefix /usr/local/qt5pi -extprefix ~/raspi/qt5pi -hostprefix ~/raspi/qt5 -v
-	```
+
+    Now it's time to set up and configure Qt for cross compiling to the ARM platform.  
+
+    ``` bash
+    ../qt5/configure -release -opengl es2 -device linux-rasp-pi3-g++ \
+    -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- \
+    -sysroot ~/raspi/sysroot -opensource -confirm-license -optimized-qmake \
+    -reduce-exports  -make libs -prefix /usr/local/qt5pi \
+    -extprefix ~/raspi/qt5pi -hostprefix ~/raspi/qt5 -v
+    ```
+
+    For __Raspberry Pi 2__ the command is slightly different (other device):
+
+    ``` bash
+    ../qt5/configure -release -opengl es2 -device linux-rasp-pi2-g++ \
+    -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf- \
+    -sysroot ~/raspi/sysroot -opensource -confirm-license -optimized-qmake \
+    -reduce-exports  -make libs -prefix /usr/local/qt5pi \
+    -extprefix ~/raspi/qt5pi -hostprefix ~/raspi/qt5 -v
+    ```
+
+    If your system is 32-bit you may also edit device option to:  
+
+    ``` bash
+    -device-option CROSS_COMPILE=~/raspi/gcc-linaro-5.5.0-2017.10-i686_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+    ```
+
 15. Compile Qt.  
     (Optional: use switch **-j** to tell make how many cores your cpu has.)  
 	(Example, ***make -j4*** tells make to use four cpu cores, which greatly speeds up compile time.)  
@@ -234,26 +276,33 @@ Now we need to fix various links and issues on the Raspberry Pi.
 	```
     If you're facing issues with running the example, try to use 00-qt5pi.conf instead of qt5pi.conf, to introduce proper order.  
 18. Fix the EGL/GLES libraries.  
-	The device may have the Mesa version of libEGL and libGLESv2 in /usr/lib/arm-linux-gnueabihf, resulting Qt apps picking these instead of the real thing from /opt/vc/lib.  
-	This may be fine for X11 desktop apps not caring about OpenGL performance but is totally useless for windowing system-less, fullscreen embedded apps.  
-	You may want to save the originals somewhere, just in case.  
-	```
-	sudo mv /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0 /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0_backup
-	sudo mv /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0 /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0_backup
-	sudo ln -s /opt/vc/lib/libEGL.so /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0
-	sudo ln -s /opt/vc/lib/libGLESv2.so /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0
-	```
+    The device may have the Mesa version of libEGL and libGLESv2 in /usr/lib/arm-linux-gnueabihf, resulting Qt apps picking these instead of the real thing from /opt/vc/lib.  
+
+    This may be fine for X11 desktop apps not caring about OpenGL performance but is totally useless for windowing system-less, fullscreen embedded apps.  
+
+    You may want to save the originals somewhere, just in case.  
+
+    ``` bash
+    sudo mv /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0 /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0_backup
+    sudo mv /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0 /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0_backup
+    sudo ln -s /opt/vc/lib/libEGL.so /usr/lib/arm-linux-gnueabihf/libEGL.so.1.0.0
+    sudo ln -s /opt/vc/lib/libGLESv2.so /usr/lib/arm-linux-gnueabihf/libGLESv2.so.2.0.0
+    ```
+
 	Please make sure to also add missing symbolic links:  
-	```
-	sudo ln -s /opt/vc/lib/libEGL.so /opt/vc/lib/libEGL.so.1
+
+    ``` bash
+    sudo ln -s /opt/vc/lib/libEGL.so /opt/vc/lib/libEGL.so.1
     sudo ln -s /opt/vc/lib/libGLESv2.so /opt/vc/lib/libGLESv2.so.2
-	```
+    ```
+
 19. Run qopenglwidget example, that we've built before.  
     At this point it should just work at fullscreen with 60 FPS and mouse, keyboard, and possibly touch support.  
+
+    ``` bash
+    sudo chmod +x /home/pi/qopenglwidget
+    ./qopenglwidget
     ```
-	sudo chmod +x /home/pi/qopenglwidget
-	./qopenglwidget
-	```
 
 If the example is running smoothly, (or rather, running at all), congratulations, you now have Qt 5 on your Raspberry Pi.  
 This is only half the battle though. Now we continue on to set up our host computer for welle.io cross compiling.  
@@ -261,66 +310,77 @@ This is only half the battle though. Now we continue on to set up our host compu
 **ON HOST COMPUTER:**
 
 20. Install dependencies
+    
     ```
     sudo apt install build-essentials gdb-multiarch
     ```
 
 21. We now need the Qt environment for our host computer, including Qt Creator.  
-	The easiest way to obtain this, is to download a precompiled Qt binary for our operating system. In this case, Ubuntu.  
-	Go to [Qt website](https://www1.qt.io/download-open-source/#section-2) and download the appropriate package for your system.  
-	For Ubuntu, Use [Online Installer Linux 64-bit.](http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run)  
-	Or the [32bit version](http://download.qt.io/official_releases/online_installers/qt-unified-linux-x86-online.run) if you have such a system.  
-	Before we begin, start another instance of terminal for a fresh start, or **cd ..** your way back to your home folder.  
-	```
-	wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
-	sudo chmod +x qt-unified-linux-x64-online.run
-	./qt-unified-linux-x64-online.run
-	```
-	Follow the instructions and install Qt, including submodules and Qt Creator.  
-	Select version 5.12.0 or higher, and a QT Creator version.  
-22. Clone welle.io.  
+
+    The easiest way to obtain this, is to download a precompiled Qt binary for our operating system. In this case, Ubuntu.  
+
+    Go to [Qt website](https://www1.qt.io/download-open-source/#section-2) and download the appropriate package for your system. For Ubuntu, Use [Online Installer Linux 64-bit.](http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run) or the [32bit version](http://download.qt.io/official_releases/online_installers/qt-unified-linux-x86-online.run) if you have such a system.  
+
+    Before we begin, start another instance of terminal for a fresh start, or `cd ..` your way back to your home folder.  
+
+    ``` bash
+    wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
+    sudo chmod +x qt-unified-linux-x64-online.run
+    ./qt-unified-linux-x64-online.run
     ```
-	git clone https://github.com/AlbrechtL/welle.io.git
-	```
+
+    Follow the instructions and install Qt, including submodules and Qt Creator. Select version 5.12.0 or higher, and a Qt Creator version.  
+
+22. Clone welle.io.  
+
+    ``` bash
+    git clone https://github.com/AlbrechtL/welle.io.git
+    ```
+
 23. Start Qt Creator.  
-24. Open project and select the welle.io folder that you just cloned and click on welle.io.pro.  
+
+24. Open project and select the welle.io folder that you just cloned and click on welle.io.pro.
+
 25. When the **configure project** screen comes up, click on **manage kits** 
-   
+
     In order to deploy directly to the raspberry pi you'll have to set it up first. Switch to the **Devices** options and select the **devices** tap. Click the **add** button an follow the wizard to configure the pi as target device. Use root as user for the deployment. 
 
     With this done, go back to the Kits options and configure the Kit.
 
-    Go to the **Qt Versions** tab and click **Add...**  
-	Move to the **~/raspi/qt5/bin/qmake** folder and select the qmake there.  
-	**Details** on the bottom should say something along the lines of "Qt version 5.12.0 for Embedded linux"  
-	
-	Now, go over to the **Compilers** tab and add **GCC C**  
-	Name it "GCC ARM" or similar so we can easily identify it later.  
-	In **Compiler path** browse to ~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin and select **arm-linux-gnueabihf-gcc**  
-	ABI should read "arm-linux-generic-elf-32bit"  
-	
-	Once again, click on **Add** and add a **GCC C++** compiler.  
-	Name it "G++ ARM" or similar.  
-	Compiler path should be the same as the previous one, but select **arm-linux-gnueabihf-g++** instead of "arm-linux-gnueabihf-gcc"  
+    * Go to the **Qt Versions** tab and click **Add...**  
+    * Move to the **~/raspi/qt5/bin/qmake** folder and select the qmake there. 
+    * **Details** on the bottom should say something along the lines of "Qt version 5.12.0 for Embedded linux"  
+
+    Now, go over to the **Compilers** tab and add **GCC C**  
+    * Name it "GCC ARM" or similar so we can easily identify it later.  
+    * In **Compiler path** browse to ~/raspi/gcc-linaro-5.5.0-2017.10-x86_64_arm-linux-gnueabihf/bin and select **arm-linux-gnueabihf-gcc**  
+    * ABI should read "arm-linux-generic-elf-32bit"  
+
+    Once again, click on **Add** and add a **GCC C++** compiler.  
+    * Name it "G++ ARM" or similar.  
+    * Compiler path should be the same as the previous one, but select **arm-linux-gnueabihf-g++** instead of "arm-linux-gnueabihf-gcc"  
     ABI should read "arm-linux-generic-elf-32bit", same as the previous one.  
-	
-	The last thing we could set up is in the **Debuggers** tab. This one isn't really needed, but lets do it anyway.  
-	Press **Add** and name it "ARM GDB" or similar and select the previously installed gdb-mulitarch (`/usr/bin/gdb-multiarch`)
-	With all this done, we can make a new kit.  
-	
-	Click on the **Kits** tab and **add**.  
-	* Name it "Raspberry Pi" or similar.  
-	* Device type: **Generic Linux Device**  
-	* Sysroot: **~/raspi/sysroot**  
+
+    The last thing we could set up is in the **Debuggers** tab. This one isn't really needed, but lets do it anyway.  
+    * Press **Add** and name it "ARM GDB" or similar and select the previously installed gdb-mulitarch (`/usr/bin/gdb-multiarch`)
+
+    With all this done, we can make a new kit.  
+
+    Click on the **Kits** tab and **add**.  
+    * Name it "Raspberry Pi" or similar.  
+    * Device type: **Generic Linux Device**  
+    * Sysroot: **~/raspi/sysroot**  
     * Device: **The device configured in the first step**
-	* Compiler: C: **GCC ARM** (Or what you named your GCC compiler.)  
-	* Compiler: C++: **G++ ARM** (Or what you named your G++ compiler.)  
-	* Debugger: **ARM GDB** (Or what you named your GDB debugger.)  
-	* Qt version: **Qt 5.12.0 (qt5)** (The one you made, not the default one which most likely already was present in the "Qt Versions" tab.)  
+    * Compiler: C: **GCC ARM** (Or what you named your GCC compiler.)  
+    * Compiler: C++: **G++ ARM** (Or what you named your G++ compiler.)  
+    * Debugger: **ARM GDB** (Or what you named your GDB debugger.)  
+    * Qt version: **Qt 5.12.0 (qt5)** (The one you made, not the default one which most likely already was present in the "Qt Versions" tab.)  
 
     With all this done, click apply and ok.  
-	Now your newly created "Raspberry Pi" kit should appear in the **Configure project** section. Select it and press **configure project.**  
-	Stuff should happen and you should be greeted with a projects tree view and some other stuff, probably a Project "MESSAGE" message of some sort too.  
+
+    Now your newly created "Raspberry Pi" kit should appear in the **Configure project** section. Select it and press **configure project.**  
+
+    The project should be configured with qmake and you should be greeted with a projects tree view and some other stuff, probably a Project "MESSAGE" message of some sort too.  
 
 26.	Now click on the monitor icon at the left hand side, most likely saying "welle.io debug" or similar, change the build to **release**.  
 	Wait a couple of seconds until the green arrows lights up again.  
