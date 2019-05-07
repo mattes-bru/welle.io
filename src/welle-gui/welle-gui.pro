@@ -58,7 +58,8 @@ DISTFILES +=    \
     QML/components/WSwitch.qml \
     QML/components/WTumbler.qml \
     QML/expertviews/ServiceDetails.qml \
-    raspi/welle-io
+    raspi/welle-io \
+    raspi/welle-io.desktop
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 
@@ -133,5 +134,16 @@ service_conf.files = \
     ./raspi/welle-io
 service_conf.path =/etc/default
 
-INSTALLS += systemd_files
-INSTALLS += service_conf
+pixmap.files = \
+    ./icon/icon.icns
+pixmap.path =/opt/welle-io/
+
+starter.files = \
+    ./raspi/welle-io.desktop
+starter.path =/usr/share/applications
+
+INSTALLS += \
+    systemd_files \
+    service_conf \
+    pixmap \
+    starter

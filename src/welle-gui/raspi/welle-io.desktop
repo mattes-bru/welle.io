@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=welle.io
+Icon=/opt/welle-io/icon.icns
+GenericName=Radio player
+Comment=Play DAB+ Radio
+Exec=/opt/welle-io/welle-io
+Terminal=false
+Type=Application
+Categories=AudioVideo;Player;
